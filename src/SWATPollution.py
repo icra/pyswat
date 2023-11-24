@@ -54,7 +54,6 @@ class SWATPollution:
                 tmp_path = reader.copy_swat(tmp_path, overwrite = overwrite_txtinout)
                 reader = TxtinoutReader(tmp_path)
 
-
             #set up
             reader.set_beginning_and_end_year(year_start, year_end)
             reader.set_warmup(warmup)
