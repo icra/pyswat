@@ -15,10 +15,10 @@ this.lock = multiprocessing.Lock()
 
 def add_solutions(paths_array: List[Dict[str, str]], errors_array: np.ndarray) -> None:
     """
-    Update the best solution based on the provided paths and errors.
+    Update the best solution based on the provided paths and errors. Only the best solution is kept, the other ones are deleted.
 
     Parameters:
-    - paths_array (np.ndarray): An array of paths.
+    - paths_array (np.ndarray): An array of dictionaries containing the paths to the output files.
     - errors_array (np.ndarray): An array of errors.
 
     Returns:

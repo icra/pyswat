@@ -162,8 +162,6 @@ class SWATProblem(Problem):
         errors_array = np.array(errors)
         paths_array = np.array(paths)
 
-        print(errors_array)
-
         src.PymooBestSolution.add_solutions(paths_array, errors_array)
         
         #minimitzar error 

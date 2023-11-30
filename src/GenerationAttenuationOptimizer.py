@@ -11,11 +11,11 @@ import tempfile
 from pySWATPlus.TxtinoutReader import TxtinoutReader
 import subprocess
 from src.SWATPollution import SWATPollution
-from pySWATPlus.SWATProblem import SWATProblem, minimize_pymoo
+#from pySWATPlus.SWATProblem import SWATProblem, minimize_pymoo
+from src.SWATProblem import SWATProblem, minimize_pymoo
 from pymoo.core.callback import Callback
 
-
-
+parametres_a_optimitzar = None
 
 def wrapper_get_error_pollution_generation(dict_args):
     return get_error_pollution_generation(**dict_args)
@@ -111,15 +111,56 @@ def get_error_pollution_generation(
         #error = random.randint(0, 1000)
         return error, txt_in_out_paths
 
-def function_prior_swat_execution(X, removal_rate_path, contaminant, txtinout_path, compound_generator_path, conca, cwd):
+def function_prior_swat_execution(
+        X, 
+        removal_rate_path, 
+        contaminant, 
+        txtinout_path,
+        parent_dir, 
+        compound_generator_path, 
+        conca, 
+        cwd, 
+        technologies_order, 
+        default_value, 
+        X_order):
+    
+    """
+    Update the best solution based on the provided paths and errors.
 
-    tmpdir = tempfile.mkdtemp(dir = '/home/jsalo/calibracio_contaminants/scripts/tmp')
-    tmpfile=tempfile.NamedTemporaryFile(dir = '/home/jsalo/calibracio_contaminants/scripts/tmp', delete=False, suffix='.xlsx')
+    Parameters:
+    - X (np.ndarray): An array of the values to set in the removal_rate file, in the same order as X_order
+    - removal_rate_path (str): Path of the removal_rate file
+    - contaminant (str): Name of the contaminant
+    - txtinout_path (str): Path of the txtinout file
+    - conca (str): Name of the watershed
+    - cwd (str): Current working directory
+    - technologies_order (list): List of technologies in the order they appear in the removal_rate file, usually ['UV', 'CL', 'SF', 'UF', 'GAC', 'RO', 'AOP', 'O3', 'OTHER', 'Primari', 'C', 'CN', 'CNP']
+    - default_value (Dict[str, float]): Default value to set in the removal_rate file for each technology
+    - X_order (List[str]): List of technologies in the order they appear in X, for example (['UV', 'CL', 'Primari', 'C', 'CN', 'CNP'])
+
+
+    Returns:
+    Path of the new txtinout file
+    """
+        
+    tmpdir = tempfile.mkdtemp(dir = parent_dir)
+    tmpfile=tempfile.NamedTemporaryFile(dir = parent_dir, delete=False, suffix='.xlsx')
     tmpfile.close()
 
+    new_values = []
 
-    new_values = [contaminant] + list(X) + [1] #set error industrial equal to 1
+    """
+    1 - llegir ordre de technologies order
+        Si valor esta dins de X_order, agafar-lo de X
+        Altrament, agafar-lo de default_value
+    """
+    for technology in technologies_order:
+        if technology in X_order:
+            new_values.append(X[X_order.index(technology)])
+        else:
+            new_values.append(default_value[technology])
 
+    new_values = [contaminant] + new_values + [1] #set error industrial equal to 1
 
     #replace parameters of current pollutant with the ones in X
     removal_rate_df = pd.read_excel(removal_rate_path)
@@ -128,7 +169,6 @@ def function_prior_swat_execution(X, removal_rate_path, contaminant, txtinout_pa
     for column in removal_rate_df:
         if removal_rate_df[column].dtype.kind == 'i':
             removal_rate_df[column] = removal_rate_df[column].astype(float)
-
 
 
     removal_rate_df = removal_rate_df.loc[removal_rate_df['contaminant'] == contaminant].copy()
@@ -142,7 +182,6 @@ def function_prior_swat_execution(X, removal_rate_path, contaminant, txtinout_pa
     try:
         os.chdir(compound_generator_path)
         result = subprocess.run(['python3', 'pymain_min.py', conca, txtinout_dst, tmpfile.name, contaminant], capture_output=True, text=True, check=True)
-        print("Subprocess output:", result.stdout)        
         os.chdir(cwd)
 
     except subprocess.CalledProcessError as e:
@@ -166,7 +205,8 @@ class MyCallback(Callback):
         y = algorithm.pop.get("F")[min_idx]
         #path = algorithm.pop.get("path")[min_idx]
 
-        print(f"Best solution found: \nX = {x} \nF = {y}\n")
+        parameters_zipped = zip(parametres_a_optimitzar, x)
+        print(f"Best solution found: \nX = {list(parameters_zipped)} \nF = {y}\n")
         
 
         #print(f'callback: {path}')
@@ -179,20 +219,60 @@ class GenerationAttenuationOptimizer:
                  txtinout_folder, 
                  removal_rate_path,
                  compound_generator_path,
+                 recall_points_path,
+                 edar_data_path,
                  channels_geom_path = os.path.join('data', 'rivs1', 'canals_tot_ci.shp'),
                  tmp_path = os.path.join('data', 'txtinouts', 'tmp'),
                  compound_features_path = os.path.join('data', 'compound_features.xlsx'),
                  lod_path = os.path.join('data', 'lod.xlsx'),
+
                  n_gen = 30,
                  n_workers = 12,
                  ):
                 
 
+        technologies_order = ['UV', 'CL', 'SF', 'UF', 'GAC', 'RO', 'AOP', 'O3', 'OTHER', 'Primari', 'C', 'CN', 'CNP', 'coef']
+        
+        #get wwtp in watersheds
+        recall_points_df = pd.read_excel(recall_points_path)
+        edars_in_conca = recall_points_df[(recall_points_df['edar_code'].notnull()) & (recall_points_df['conca'] == conca)].edar_code.unique()
+        
+        #get unique technologies from wwtp in watersheds
+        edar_data_df = pd.read_excel(edar_data_path)
+        edar_data_df = edar_data_df[edar_data_df['codi_eu'].isin(edars_in_conca)]
+        primari = edar_data_df.primari.dropna().unique()
+        secundari = edar_data_df.secundari.dropna().unique()
+        terciari_splitted = [s.split(',') for s in edar_data_df.terciari.dropna()]
+        terciari = set([tecnologia for tren_tractament in terciari_splitted for tecnologia in tren_tractament])
+        technologies_used_in_watershed_wwtp = set([*primari, *secundari, *terciari]) #{'CL', 'OTHER', 'P', 'SC', 'SF', 'SN', 'SP', 'UF', 'UV'}
+
+        X_order = []    #these are the values that will be optimized
+        for technology in technologies_order:
+            if technology == 'Primari':
+                if 'P' in technologies_used_in_watershed_wwtp:
+                    X_order.append(technology)
+            elif technology == 'C':
+                if 'SC' in technologies_used_in_watershed_wwtp:
+                    X_order.append(technology)
+            elif technology == 'CN':
+                if 'SN' in technologies_used_in_watershed_wwtp:
+                    X_order.append(technology)
+            elif technology == 'CNP':
+                if 'SP' in technologies_used_in_watershed_wwtp:
+                    X_order.append(technology)
+            elif technology == 'coef':
+                X_order.append(technology)
+            else:
+                if technology in technologies_used_in_watershed_wwtp:
+                    X_order.append(technology)
+
         #Llegir removal rate
         removal_rate_df = pd.read_excel(removal_rate_path, index_col=0)
-        removal_rate_df = removal_rate_df[['UV', 'CL', 'SF', 'UF', 'GAC', 'RO', 'AOP', 'O3', 'OTHER', 'Primari', 'C', 'CN', 'CNP', 'coef']]
+        removal_rate_df = removal_rate_df[technologies_order]
+        removal_rate_df = removal_rate_df.loc[contaminant]
+        default_value = removal_rate_df.to_dict()   #default value that parameters have according to the removal_rate file
 
-        removal_rate = removal_rate_df.loc[contaminant].values
+        removal_rate = removal_rate_df[X_order].values
 
         prior_swat_execution_ub = [min(1.3*x, 100) for x in removal_rate]
         prior_swat_execution_lb = list(removal_rate * 0.7)
@@ -203,6 +283,10 @@ class GenerationAttenuationOptimizer:
 
         #delete column name
         df_contaminant = df_contaminant[['solub', 'aq_hlife', 'aq_volat', 'aq_resus', 'aq_settle', 'ben_act_dep', 'ben_bury', 'ben_hlife']]
+
+        #Global variables (only for printing purposes)
+        global parametres_a_optimitzar
+        parametres_a_optimitzar = X_order + ['solub', 'aq_hlife', 'aq_volat', 'aq_resus', 'aq_settle', 'ben_act_dep', 'ben_bury', 'ben_hlife']
 
         #convert to dict
         param_dict = df_contaminant.to_dict('records')[0]
@@ -247,10 +331,13 @@ class GenerationAttenuationOptimizer:
             'removal_rate_path': removal_rate_path, 
             'contaminant': contaminant, 
             'txtinout_path': txtinout_folder, 
+            'parent_dir': tmp_path,
             'compound_generator_path': compound_generator_path, 
             'conca': conca,
-            'cwd': Path.cwd()
-
+            'cwd': Path.cwd(),
+            'technologies_order': technologies_order, 
+            'default_value': default_value, 
+            'X_order': X_order
         }
 
 

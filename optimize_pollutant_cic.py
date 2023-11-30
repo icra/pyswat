@@ -26,7 +26,6 @@ if __name__ == '__main__':
     for conca in conques:
         txt_in_outs_paths.append(cwd / 'data' / 'txtinouts' / f"TxtInOut_{conca}")
 
-    
     #conca = 'fluvia'
     #txtinout_folder = cwd / 'data' / 'txtinouts' / f"TxtInOut_{conca}"
     channels_geom_path = cwd / 'data' / 'rivs1' / 'canals_tot_ci.shp'

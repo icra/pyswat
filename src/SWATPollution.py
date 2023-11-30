@@ -9,8 +9,8 @@ from sklearn.metrics import mean_squared_error, r2_score
 import plotly.express as px
 from bokeh.models import HoverTool
 import geoviews as gv
-import plotly.graph_objects as go
 gv.extension('bokeh', 'matplotlib')
+import plotly.graph_objects as go
 from src.pollution_utils import observacions_from_conca
 from pySWATPlus.TxtinoutReader import TxtinoutReader
 #from src.TxtinoutReader import TxtinoutReader
@@ -213,7 +213,7 @@ class SWATPollution:
     def get_txtinout_path(self):
         return self.txtinout_path
     
-    def simple_map(self):
+    def simple_map(self, edars):
     
         # Create the 'observations_map' plot    
         hover = HoverTool(tooltips=[("observacio (mg/l)", "@valor"),
@@ -227,8 +227,9 @@ class SWATPollution:
 
         #pts = pts.groupby(['id', 'geometry']).agg(prom_revenue=('prix',np.mean)).reset_index() 
         #gdf_observacions = self.gdf_observacions.groupby("geometry").max()[['mg_l', 'valor', 'error']]
-        
-        #for each point with multiple observations, take the max error for color
+
+
+        #for each point with multiple observations, take the mean for color
         error_gdf = gdf_observacions.groupby(['geometry']).agg(max_error=('error', np.mean)).reset_index()
         error_gdf = error_gdf.replace([np.inf, -np.inf], np.nan).dropna()
         error_gdf = gpd.GeoDataFrame(error_gdf, geometry='geometry')
@@ -240,6 +241,7 @@ class SWATPollution:
             gdf_observacions
         ).opts(tools=[hover], color='max_error', show_legend=True, cmap = 'Reds', line_color = 'black', size=7, colorbar=True)
 
+        
         hover_2 = HoverTool(tooltips=[("canal", "@Channel"),
                                 ])
 
@@ -250,11 +252,22 @@ class SWATPollution:
 
     
         tiles = gv.tile_sources.CartoLight()  
+
         
-        return (tiles * river_map * observations_map).opts(width=800, height=500)
+        gdf_edars = gpd.GeoDataFrame(
+            edars, geometry=gpd.points_from_xy(edars.lon, edars.lat), crs="EPSG:4326"
+        )
+        edars_map = gv.Points(
+            gdf_edars
+        ).opts( show_legend=True, marker = 's', color = 'blue', line_color = 'black', size=4, colorbar=True)
+
+
+        
+        return (tiles * river_map * observations_map * edars_map).opts(width=800, height=500)
           
     def scatter_plot(self):
         df = self.gdf_observacions.copy()
+
         #df = df.replace([np.inf, -np.inf], np.nan).dropna()
         df = df.rename(columns = {'mg_l':'prediccio (mg/l)', 'valor':'observacio (mg/l)'})
 
@@ -266,17 +279,19 @@ class SWATPollution:
         fig = go.Figure()
 
         
-        fig = px.scatter(df, x="observacio (mg/l)", y="prediccio (mg/l)")
+        fig = px.scatter(df, x="observacio (mg/l)", y="prediccio (mg/l)", hover_data=["gis_id"])
 
         #add trace x=y in gray and dashed
         fig.add_trace(
             go.Scatter(x=df['observacio (mg/l)'], y=df['observacio (mg/l)'],  line=dict(width=1, dash='dot', color='black'), marker=dict(opacity=0))
             )
         
-        fig.add_trace(
-            go.Scatter(x=df['observacio (mg/l)'], y=df['prediccio (mg/l)'], mode='markers')
-        )
         
+        """
+        fig.add_trace(
+            go.Scatter(x=df['observacio (mg/l)'], y=df['prediccio (mg/l)'], mode='markers',  hover_data=["gis_id"])
+        )
+        """
 
         fig.update_traces(marker=dict(size=9,
                                       color = 'orange',

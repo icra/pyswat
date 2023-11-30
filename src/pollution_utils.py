@@ -1,7 +1,5 @@
 import pandas as pd
 from sqlalchemy import create_engine
-import geoviews as gv
-gv.extension('bokeh', 'matplotlib')
 import geopandas as gpd
 from shapely.geometry import Point
 

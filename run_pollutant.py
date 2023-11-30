@@ -3,7 +3,7 @@ from src.pollution_utils import generate_pollution_observations, observacions_fr
 from pathlib import Path
 import sys
 import pandas as pd
-
+import json
 
 if __name__ == '__main__':
 
@@ -11,6 +11,22 @@ if __name__ == '__main__':
     args = sys.argv[1:]
     contaminant = args[0]
     conca = args[1]
+
+    if len (args) > 2:
+        compound_features = json.loads(args[2])
+    else:
+        compound_features = {
+            'pollutants.def': ('name', [
+                (contaminant, 'solub', 5.89175657e+03),
+                (contaminant, 'aq_hlife',  7.87844189e-01),
+                (contaminant, 'aq_volat', 5.36559494e-05),
+                (contaminant, 'aq_resus', 1.39548344e-02),
+                (contaminant, 'aq_settle', 3.41342884e-02),
+                (contaminant, 'ben_act_dep', 1.98351488e+00),
+                (contaminant, 'ben_bury', 9.04084839e-03),
+                (contaminant, 'ben_hlife', 4.34015290e-01),
+                ])
+        }
             
     cwd = Path(__file__).parent
     txt_in_out_path = cwd / 'data' / 'txtinouts' / f"TxtInOut_{conca}"
@@ -28,18 +44,6 @@ if __name__ == '__main__':
     lod_df = pd.read_excel(lod_path, index_col=0)
     lod = lod_df.loc[contaminant, 'LOD (mg/L)']
 
-    compound_features = {
-    'pollutants.def': ('name', [
-        (contaminant, 'solub', 2.28816965e+03),
-        (contaminant, 'aq_hlife',  5.99732716e-03),
-        (contaminant, 'aq_volat', 3.87000144e-05),
-        (contaminant, 'aq_resus', 1.02201533e-03),
-        (contaminant, 'aq_settle', 5.45093033e+00),
-        (contaminant, 'ben_act_dep', 4.90566154e-01),
-        (contaminant, 'ben_bury', 5.65711331e-03),
-        (contaminant, 'ben_hlife', 2.13910308e+00),
-        ])
-    }
 
     df = observacions_from_conca(channels_geom_path, observacions, conca)
     first_observation = df.year.min()
