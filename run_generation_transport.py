@@ -16,7 +16,7 @@ if __name__ == '__main__':
     contaminant = args[0]
     conca = args[1]
     """
-    contaminant = 'Ciprofloxacina'
+    contaminant = 'Venlafaxina'
     conca = 'besos'
 
     cwd = Path(__file__).parent
@@ -30,12 +30,26 @@ if __name__ == '__main__':
 
 
     #Crear fitxer auxiliar
-    tmpdir = tempfile.mkdtemp(dir = tmp_path)
+
+
+    try: 
+        tmpdir = tempfile.mkdtemp(dir = tmp_path)
+    except FileNotFoundError:
+        os.makedirs(tmp_path, exist_ok=True)
+        tmpdir = tempfile.mkdtemp(dir = tmp_path)
+
     tmpfile=tempfile.NamedTemporaryFile(dir = tmp_path, delete=False, suffix='.xlsx')
     tmpfile.close()
 
     #Definir parametres generatio i sanejament ['UV', 'CL', 'SF', 'UF', 'GAC', 'RO', 'AOP', 'O3', 'OTHER', 'Primari', 'C', 'CN', 'CNP', 'cxgx']
-    new_values = [10.061382349987, 3.68910396e+00, 0, 9.53763700e-01, 90, 98, 90, 90, 0, 3.37157970e+01, 9.98377496e+01, 9.99835912e+01, 9.99294450e+01, 1.65777664e-01]
+
+    #new_values = [99.99, 99.99, 99.99, 99.99, 99.99, 99.99, 99.99, 99.99, 99.99, 99.99, 99.99, 99.99, 99.99, 0.96]
+
+    #new_values = [40, 50, 0, 0, 50, 60, 50, 60, 20, 5, 15, 30, 15, 0.5]   # hauria de ser prediccio mes alta que observacio
+
+    #['CL', 'UF', 'Primari', 'C', 'CN', 'CNP', 'coef']
+    new_values = [90, 100, 30, 30, 100, 100, 100, 100, 50, 20, 40, 100,60, 4e-6]   # hauria de ser prediccio mes baixa que observacio
+
     new_values = [contaminant] + new_values + [1]   #contaminant + parametres atenuacio + coeficient error industrial
 
     removal_rate_df = pd.read_excel(removal_rate_path)
@@ -69,14 +83,14 @@ if __name__ == '__main__':
     #Executar SWAT
     compound_features = {
         'pollutants.def': ('name', [
-            (contaminant, 'solub', 5.89175657e+03),
-            (contaminant, 'aq_hlife',  7.87844189e-01),
-            (contaminant, 'aq_volat', 5.36559494e-05),
-            (contaminant, 'aq_resus', 1.39548344e-02),
-            (contaminant, 'aq_settle', 3.41342884e-02),
-            (contaminant, 'ben_act_dep', 1.98351488e+00),
-            (contaminant, 'ben_bury', 9.04084839e-03),
-            (contaminant, 'ben_hlife', 4.34015290e-01),
+            (contaminant, 'solub', 268.87921403643594),
+            (contaminant, 'aq_hlife',  5.8163288973662475),
+            (contaminant, 'aq_volat', 2.426892003951511e-05),
+            (contaminant, 'aq_resus', 0.016572877755983338),
+            (contaminant, 'aq_settle', 3.323523663451719),
+            (contaminant, 'ben_act_dep', 2.8013198398771575),
+            (contaminant, 'ben_bury', 0.015674893121805523),
+            (contaminant, 'ben_hlife', 4.8360458988330155),
             ])
     }
 

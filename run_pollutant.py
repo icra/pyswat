@@ -17,14 +17,14 @@ if __name__ == '__main__':
     else:
         compound_features = {
             'pollutants.def': ('name', [
-                (contaminant, 'solub', 5.89175657e+03),
-                (contaminant, 'aq_hlife',  7.87844189e-01),
-                (contaminant, 'aq_volat', 5.36559494e-05),
-                (contaminant, 'aq_resus', 1.39548344e-02),
-                (contaminant, 'aq_settle', 3.41342884e-02),
-                (contaminant, 'ben_act_dep', 1.98351488e+00),
-                (contaminant, 'ben_bury', 9.04084839e-03),
-                (contaminant, 'ben_hlife', 4.34015290e-01),
+                (contaminant, 'solub', 2.84840874e+03),
+                (contaminant, 'aq_hlife',  5.64305970e-03),
+                (contaminant, 'aq_volat', 5.60965708e-05),
+                (contaminant, 'aq_resus', 1.11732057e-02),
+                (contaminant, 'aq_settle', 4.04903485e+00),
+                (contaminant, 'ben_act_dep', 2.49506863e+00),
+                (contaminant, 'ben_bury', 9.20867892e-03),
+                (contaminant, 'ben_hlife', 1.43302090e+00),
                 ])
         }
             

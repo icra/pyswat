@@ -9,6 +9,8 @@ from typing import Optional, Callable, Tuple, Any, Dict, List
 #from pymoo.model.algorithm import Algorithm
 #from pymoo.model.termination import Termination
 from pymoo.optimize import minimize
+from multiprocessing.pool import ThreadPool
+from concurrent.futures import ThreadPoolExecutor
 
 def minimize_pymoo(
         problem: Problem, 
@@ -95,7 +97,7 @@ class SWATProblem(Problem):
             ub = [*ub_prior, *ub]
             self.n_vars_prior = len(ub_prior)
 
-        self.fuction_to_evaluate = function_to_evaluate
+        self.function_to_evaluate = function_to_evaluate
         self.n_workers = n_workers
         self.params = params
         self.kwargs = kwargs
@@ -104,7 +106,10 @@ class SWATProblem(Problem):
         self.args_function_to_evaluate_prior = args_function_to_evaluate_prior
         self.param_arg_name_to_modificate_by_prior_function = param_arg_name_to_modificate_by_prior_function
         
-        self.pool = multiprocessing.Pool(n_workers)
+        #self.pool = multiprocessing.Pool(n_workers)
+        #self.pool = ThreadPool(n_workers)
+        #self.pool = ThreadPoolExecutor(max_workers=n_workers)
+        
         
         super().__init__(n_var=n_vars, n_obj=1, n_constr=0, xl=lb, xu=ub, elementwise_evaluation=False)
 
@@ -129,13 +134,16 @@ class SWATProblem(Problem):
         None
         """
 
+        print('starting _evaluate')
         args_array = []
 
         for x in X:
 
             X_prior = x[:self.n_vars_prior]
             X_swat = x[self.n_vars_prior:]
-            return_function_prior = self.function_to_evaluate_prior(X = X_prior, **self.args_function_to_evaluate_prior)
+            
+            if self.function_to_evaluate_prior is not None:
+                return_function_prior = self.function_to_evaluate_prior(X = X_prior, **self.args_function_to_evaluate_prior)
 
             _id = 0
             new_params = {}     #in the end will be {filename: (id_col, [(id, col, value)])}
@@ -155,17 +163,27 @@ class SWATProblem(Problem):
             
             args_array.append(copy.deepcopy(self.kwargs))
         
-        F = self.pool.map(self.fuction_to_evaluate, args_array)
-
+        #F = self.pool.map(self.fuction_to_evaluate, args_array)
+        with ThreadPoolExecutor(max_workers=self.n_workers) as executor:
+            F = list(executor.map(self.function_to_evaluate, args_array))      
+        
         errors, paths = zip(*F)
 
         errors_array = np.array(errors)
         paths_array = np.array(paths)
 
+        #check if nans and print message
+        if np.isnan(errors_array).any():
+            print('ERROR: some errors are nan')
+            print(errors_array)
+            print(paths_array)
+
         src.PymooBestSolution.add_solutions(paths_array, errors_array)
         
         #minimitzar error 
         out["F"] = errors_array
+
+        print('returning from _evaluate')
         
     
 

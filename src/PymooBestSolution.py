@@ -25,7 +25,7 @@ def add_solutions(paths_array: List[Dict[str, str]], errors_array: np.ndarray) -
     None
     """
     
-    min_idx = np.argmin(errors_array)
+    min_idx = np.nanargmin(errors_array)
     path = paths_array[min_idx]
     error = errors_array[min_idx]
 
@@ -36,7 +36,7 @@ def add_solutions(paths_array: List[Dict[str, str]], errors_array: np.ndarray) -
 
     
     for i in all_paths:
-        if i not in best:
+        if i not in best and i is not None:
             shutil.rmtree(i)
 
 
@@ -53,10 +53,12 @@ def add_solution(X: np.ndarray, path: Dict[str, str], error: float) -> None:
     None
     """
     with this.lock:
+
         if this.error is None or this.error > error:
             this.X = X
             this.path = path
             this.error = error
+
 
 
 def get_solution() -> Tuple[np.ndarray, Dict[str, str], float]:

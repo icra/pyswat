@@ -107,6 +107,8 @@ class SWATPollution:
                     has_units=True,
                     usecols=['mon', 'day', 'yr', 'gis_id', 'flo_out'])
         
+        self.flow = flow.df
+        
         flow_df = flow.df
       
         #merge
@@ -121,7 +123,6 @@ class SWATPollution:
         #df['pollutant'] = df['pollutant'].astype(str)
         df['pollutant'] = df['pollutant'].str.replace(pollutant_name_joined, contaminant)
         
-        self.df = df
 
         gdf = gpd.read_file(channels_geom_path, driver="ESRI Shapefile")
         observacions_conca = observacions_from_conca(channels_geom_path, observacions, conca)
@@ -154,6 +155,8 @@ class SWATPollution:
         df["Date"] = pd.to_datetime(df[["year", "month", "day"]])
         gdf_map = gpd.GeoDataFrame(df, geometry='geometry')
         gdf_map['date_str'] = gdf_map['Date'].dt.strftime('%Y-%m-%d')
+
+        self.df = df
 
 
         #convert observations to geodataframe
@@ -230,7 +233,7 @@ class SWATPollution:
 
 
         #for each point with multiple observations, take the mean for color
-        error_gdf = gdf_observacions.groupby(['geometry']).agg(max_error=('error', np.mean)).reset_index()
+        error_gdf = gdf_observacions.groupby(['geometry']).agg(max_error=('error', np.max)).reset_index()
         error_gdf = error_gdf.replace([np.inf, -np.inf], np.nan).dropna()
         error_gdf = gpd.GeoDataFrame(error_gdf, geometry='geometry')
 
@@ -372,6 +375,72 @@ class SWATPollution:
     
     def get_a(self):
         return self.a
+    
+    def plot_channel(self, gis_id):
+
+        predictions = self.get_df()  
+        observations = self.gdf_observacions.copy()
+
+        predictions_channel = predictions[predictions['gis_id'] == gis_id][['mg_l', 'Date']]
+        observations_channel = observations[observations['gis_id'] == gis_id]
+
+        fig = px.line(predictions_channel, x='Date', y="mg_l", )
+
+        fig.add_trace(
+            px.scatter(observations_channel, x='fecha', y="valor").update_traces(marker=dict(color='orange'), mode='markers').data[0]
+        )
+
+        fig.update_traces(line=dict(color='black'))
+
+        rmse = self.rmse
+
+        upper_bound = predictions_channel['mg_l'] + 2*rmse
+        lower_bound = predictions_channel['mg_l'] - 2*rmse
+        lower_bound = lower_bound.apply(lambda x: max(0, x))
+
+        fig.add_traces([go.Scatter(x = predictions_channel.Date, y = upper_bound,
+                                mode = 'lines', line_color = 'rgba(0,0,0,0)',
+                                showlegend = False),
+                        go.Scatter(x = predictions_channel.Date, y = lower_bound,
+                                mode = 'lines', line_color = 'rgba(0,0,0,0)',
+                                name = '95% confidence interval',
+                                fill='tonexty', fillcolor = 'rgba(128, 128, 128, 0.2)')])
+
+
+        fig.update_traces(marker=dict(size=9,
+                                            color = 'orange',
+                                            line=dict(width=1)),
+                                    selector=dict(mode='markers'))
+
+
+        fig.update_layout(
+                    showlegend=False,
+                    plot_bgcolor="white",
+                    margin=dict(t=10,l=10,b=10,r=10)
+                )
+                
+        fig.update_layout(
+                    plot_bgcolor='white'
+                )
+        fig.update_xaxes(
+                    mirror=True,
+                    ticks='outside',
+                    showline=True,
+                    linecolor='black',
+                    gridcolor='lightgrey'
+                )
+        fig.update_yaxes(
+                    mirror=True,
+                    ticks='outside',
+                    showline=True,
+                    linecolor='black',
+                    gridcolor='lightgrey'
+                )
+
+
+
+        return fig
+
 
         
 

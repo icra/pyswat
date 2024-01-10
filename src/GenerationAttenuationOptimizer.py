@@ -14,8 +14,11 @@ from src.SWATPollution import SWATPollution
 #from pySWATPlus.SWATProblem import SWATProblem, minimize_pymoo
 from src.SWATProblem import SWATProblem, minimize_pymoo
 from pymoo.core.callback import Callback
+import random
+
 
 parametres_a_optimitzar = None
+temporary_results_path = None
 
 def wrapper_get_error_pollution_generation(dict_args):
     return get_error_pollution_generation(**dict_args)
@@ -71,8 +74,9 @@ def get_error_pollution_generation(
                 pollution_generator = run_swat_pollution(conca_aux, contaminant, path_aux, channels_geom_path, tmp_path, run, compound_features, observacions, lod, year_start, year_end, warmup)
                 errors.append(pollution_generator.get_error())
                 txt_in_out_paths[conca_aux] = pollution_generator.get_txtinout_path()
+                
                 #errors.append(0)
-                #txt_in_out_paths[conca_aux] = None
+                #txt_in_out_paths[conca_aux] = 'aaaaaa'
 
 
             except Exception as e:
@@ -98,8 +102,8 @@ def get_error_pollution_generation(
             txt_in_out_paths[conca] = pollution_generator.get_txtinout_path()
             error = pollution_generator.get_error()
             
-            #errors.append(0)
-            #txt_in_out_paths[conca_aux] = None
+            #error = random.randint(0, 1000)
+            #txt_in_out_paths[conca] = 'aaaaaa'
 
         except Exception as e:
             print(f'error in {conca}')
@@ -108,7 +112,6 @@ def get_error_pollution_generation(
             error = np.nan
 
 
-        #error = random.randint(0, 1000)
         return error, txt_in_out_paths
 
 def function_prior_swat_execution(
@@ -205,8 +208,11 @@ class MyCallback(Callback):
         y = algorithm.pop.get("F")[min_idx]
         #path = algorithm.pop.get("path")[min_idx]
 
-        parameters_zipped = zip(parametres_a_optimitzar, x)
-        print(f"Best solution found: \nX = {list(parameters_zipped)} \nF = {y}\n")
+        print(f"Best solution found: \nX = {list(zip(parametres_a_optimitzar, x))} \nF = {y}\n")
+
+        #append results to file
+        with open(temporary_results_path, 'a') as f:
+            f.write(f"Best solution found: \nX = {list(zip(parametres_a_optimitzar, x))} \nF = {y}\n\n")
         
 
         #print(f'callback: {path}')
@@ -221,17 +227,20 @@ class GenerationAttenuationOptimizer:
                  compound_generator_path,
                  recall_points_path,
                  edar_data_path,
+                 results_file_path,
                  channels_geom_path = os.path.join('data', 'rivs1', 'canals_tot_ci.shp'),
                  tmp_path = os.path.join('data', 'txtinouts', 'tmp'),
                  compound_features_path = os.path.join('data', 'compound_features.xlsx'),
                  lod_path = os.path.join('data', 'lod.xlsx'),
-
                  n_gen = 30,
-                 n_workers = 12,
+                 n_workers = 5,
+
                  ):
                 
 
         technologies_order = ['UV', 'CL', 'SF', 'UF', 'GAC', 'RO', 'AOP', 'O3', 'OTHER', 'Primari', 'C', 'CN', 'CNP', 'coef']
+        global temporary_results_path 
+        temporary_results_path = results_file_path
         
         #get wwtp in watersheds
         recall_points_df = pd.read_excel(recall_points_path)
@@ -272,10 +281,19 @@ class GenerationAttenuationOptimizer:
         removal_rate_df = removal_rate_df.loc[contaminant]
         default_value = removal_rate_df.to_dict()   #default value that parameters have according to the removal_rate file
 
+
+        print(X_order)
+
+
         removal_rate = removal_rate_df[X_order].values
 
-        prior_swat_execution_ub = [min(1.3*x, 100) for x in removal_rate]
-        prior_swat_execution_lb = list(removal_rate * 0.7)
+        #prior_swat_execution_ub = [min(1.3*x, 100) for x in removal_rate]
+        #prior_swat_execution_lb = list(removal_rate * 0.7)
+
+        #['CL', 'UF',  'Primari', 'C', 'CN', 'CNP', 'cxgx']
+        prior_swat_execution_lb = [50,  0,  5, 15, 30, 15, 4e-6]   # hauria de ser prediccio mes alta que observacio
+        prior_swat_execution_ub = [100, 30, 20, 40, 100, 60, 0.4]
+
 
         #Llegir compound features
         compound_features_df = pd.read_excel(compound_features_path).dropna()
@@ -372,10 +390,9 @@ class GenerationAttenuationOptimizer:
         
         x0 = denormalize(np.random.random(self.swat_problem.n_var), self.swat_problem.xl, self.swat_problem.xu)
         max_evals = self.swat_problem.n_var * 100
-
+        
         algorithm = CMAES(x0=x0,
                         maxfevals=max_evals)   
-        
                      
         termination = get_termination("n_eval", max_evals)
 

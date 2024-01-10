@@ -11,7 +11,8 @@ import numpy as np
 from pymoo.util.normalization import denormalize
 from src.pollution_utils import observacions_from_conca
 
-from pySWATPlus.SWATProblem import SWATProblem, minimize_pymoo
+#from pySWATPlus.SWATProblem import SWATProblem, minimize_pymoo
+from src.SWATProblem import SWATProblem, minimize_pymoo
 
 
 

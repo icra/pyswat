@@ -42,6 +42,11 @@ folder_name = contaminant + '_' + conca + '_' + current_datetime.strftime("%Y-%m
 folder_path = Path(parent_dir +  folder_name)
 folder_path.mkdir(parents=True, exist_ok=True) 
 
+#make file for saving results
+results_file = folder_name + '.txt'
+results_file_path = Path(parent_dir + results_file)
+results_file_path.touch(exist_ok=True)
+
 
 a = GenerationAttenuationOptimizer(
     conca, 
@@ -51,21 +56,19 @@ a = GenerationAttenuationOptimizer(
     compound_generator_path = compound_generator_path,
     recall_points_path = recall_points_path,
     edar_data_path = edar_data_path,
+    results_file_path = results_file_path,
     channels_geom_path = cwd/'scripts'/'traca_contaminacio'/'data'/'rivs1'/'canals_tot_ci.shp',
     tmp_path = folder_path,
     compound_features_path = cwd/'scripts'/'traca_contaminacio'/'data'/'compound_features.xlsx',
     lod_path = cwd/'scripts'/'traca_contaminacio'/'data'/'lod.xlsx',
-    n_gen = 1,
-    n_workers = 10,
+    n_gen = 800,
+    n_workers = 4,
 )
 
 # %%
 res = a.minimize()
+print(res)
 
-# %%
-res
-
-# %%
 
 
 
