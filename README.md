@@ -1,5 +1,5 @@
 # Pollution calibration for TRACA project
-This package implements the code for calibrating and analysing the results of SWAT pollution simulation. Has to be used with [input compound generator](https://github.com/icra/traca). Uses [pyswatplus](https://github.com/icra/pySWATPlus) for calibrating.
+This package implements the code for calibrating and analysing the results of SWAT pollution simulation. Has to be used with [input compound generator](https://github.com/icra/traca). Uses [pyswatplus](https://github.com/icra/pySWATPlus) for calibrating, and our modified version of (SWAT+ for modeling point-source pollution)[https://github.com/icra/swatplus]
 
 The main files are:
 - optimize_pollutant.py: calibrate pollutant parameters related to transport and attenuation in river
