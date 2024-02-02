@@ -106,6 +106,8 @@ class MyCallback(Callback):
 
     def notify(self, algorithm):
 
+        print('entering callback')
+
         #get argmin
         min_idx = np.argmin(algorithm.pop.get("F"))
 

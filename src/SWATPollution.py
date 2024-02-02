@@ -125,6 +125,7 @@ class SWATPollution:
         
 
         gdf = gpd.read_file(channels_geom_path, driver="ESRI Shapefile")
+
         observacions_conca = observacions_from_conca(channels_geom_path, observacions, conca)
 
         #merge observacions with model results
@@ -280,9 +281,8 @@ class SWATPollution:
         df = df[df['prediccio (mg/l)'] > 0]
 
         fig = go.Figure()
-
         
-        fig = px.scatter(df, x="observacio (mg/l)", y="prediccio (mg/l)", hover_data=["gis_id"])
+        fig = px.scatter(df, x="observacio (mg/l)", y="prediccio (mg/l)", hover_data=["gis_id"], color='origen')
 
         #add trace x=y in gray and dashed
         fig.add_trace(
@@ -297,7 +297,7 @@ class SWATPollution:
         """
 
         fig.update_traces(marker=dict(size=9,
-                                      color = 'orange',
+                                      #color = 'orange',
                                       line=dict(width=1)),
                             selector=dict(mode='markers'))
 

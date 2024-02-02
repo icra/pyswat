@@ -172,14 +172,23 @@ class SWATProblem(Problem):
         errors_array = np.array(errors)
         paths_array = np.array(paths)
 
+        print(errors_array)
+
+        #replace nan error by 1e10 (infinity)
+        errors_array[np.isnan(errors_array)] = 1e10
+
         #check if nans and print message
         if np.isnan(errors_array).any():
             print('ERROR: some errors are nan')
             print(errors_array)
             print(paths_array)
 
+        print('adding solutions')
+
         src.PymooBestSolution.add_solutions(paths_array, errors_array)
-        
+    
+        print('exit adding solutions')
+
         #minimitzar error 
         out["F"] = errors_array
 

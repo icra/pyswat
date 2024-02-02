@@ -139,7 +139,7 @@ def function_prior_swat_execution(
     - cwd (str): Current working directory
     - technologies_order (list): List of technologies in the order they appear in the removal_rate file, usually ['UV', 'CL', 'SF', 'UF', 'GAC', 'RO', 'AOP', 'O3', 'OTHER', 'Primari', 'C', 'CN', 'CNP']
     - default_value (Dict[str, float]): Default value to set in the removal_rate file for each technology
-    - X_order (List[str]): List of technologies in the order they appear in X, for example (['UV', 'CL', 'Primari', 'C', 'CN', 'CNP'])
+    - X_order (List[str]): List of technologies in the order they appear in X (technologies that we are calibrating), for example (['UV', 'CL', 'Primari', 'C', 'CN', 'CNP'])
 
 
     Returns:
@@ -281,19 +281,30 @@ class GenerationAttenuationOptimizer:
         removal_rate_df = removal_rate_df.loc[contaminant]
         default_value = removal_rate_df.to_dict()   #default value that parameters have according to the removal_rate file
 
-
-        print(X_order)
-
-
         removal_rate = removal_rate_df[X_order].values
 
-        #prior_swat_execution_ub = [min(1.3*x, 100) for x in removal_rate]
-        #prior_swat_execution_lb = list(removal_rate * 0.7)
+        #find 'cgxg' index
+        cgxg_index = X_order.index('coef')
+
+        prior_swat_execution_ub = [min(1.3*x, 100) for x in removal_rate]
+        prior_swat_execution_lb = list(removal_rate * 0.7)
+
+        #rangs molt variables de generacio (es estrany, pero es el que diu el document de Review.xlsx)
+        #Dades en grams/dia
+        if contaminant.lower() == 'ciprofloxacina':
+            print('canviant contaminacio ciprofloxacina')
+            prior_swat_execution_ub[cgxg_index] = 3e-3
+            prior_swat_execution_lb[cgxg_index] = 83.5e-6
+        if contaminant.lower() == 'venlafaxina':
+            print('canviant contaminacio venlafaxina')
+            prior_swat_execution_ub[cgxg_index] = 0.4
+            prior_swat_execution_lb[cgxg_index] = 4e-6
+
 
         #['CL', 'UF',  'Primari', 'C', 'CN', 'CNP', 'cxgx']
-        prior_swat_execution_lb = [50,  0,  5, 15, 30, 15, 4e-6]   # hauria de ser prediccio mes alta que observacio
-        prior_swat_execution_ub = [100, 30, 20, 40, 100, 60, 0.4]
-
+        #Hard coing lower and upper bounds instead of using the ones above (this worked for venlafaxine and ciprofloxacina)
+        #prior_swat_execution_lb = [50,  0,  5, 15, 30, 15, 4e-6]   # hauria de ser prediccio mes alta que observacio
+        #prior_swat_execution_ub = [100, 30, 20, 40, 100, 60, 0.4]  # hauria de ser prediccio mes baixa que observacio
 
         #Llegir compound features
         compound_features_df = pd.read_excel(compound_features_path).dropna()

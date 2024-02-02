@@ -8,7 +8,7 @@ def generate_pollution_observations(contaminant):
     
     engine = create_engine('postgresql://traca_user:EdificiH2O!@217.61.208.188:5432/traca_1')
     #observacions = pd.read_sql(f"SELECT fecha, estacion, cod_estaci, utm_x, utm_y, variable, unidad_med, valor_alfa, valor FROM estacions_full where variable = '{contaminant}'", engine)
-    observacions = pd.read_sql(f"SELECT fecha, estacion, cod_esta_1, utm_x, utm_y, variable, unidad_med, valor_alfa, valor FROM estacions_full_1 where variable = '{contaminant}'", engine)
+    observacions = pd.read_sql(f"SELECT fecha, estacion, cod_esta_1, utm_x, utm_y, variable, unidad_med, valor_alfa, valor, origen FROM estacions_full_1 where variable = '{contaminant}'", engine)
     observacions = observacions.rename(columns={'cod_esta_1':'cod_estaci'})
 
     observacions['fecha'] = pd.to_datetime(observacions['fecha'], format='mixed')
@@ -61,4 +61,34 @@ def observacions_from_conca(channels_geom_path, observacions, conca):
     return observacions_conca
 
 
+def generate_wwtp_observations(contaminant):
+    
+    engine = create_engine('postgresql://traca_user:EdificiH2O!@217.61.208.188:5432/traca_1')
+    observacions = pd.read_sql(f"""SELECT * FROM edars_effluent where "Substance name" = '{contaminant}'""", engine)
+    
+    observacions = observacions.rename(columns={'Unit':'unit'})
+    observacions = observacions.rename(columns={'Substance name':'substance_name'})
+    observacions = observacions.rename(columns={'Value':'value'})
+
+
+    observacions['fecha'] = pd.to_datetime(observacions['fecha'], format='mixed')
+    
+    #Convert concentration of observations to mg/L
+    def f(unit, value):
+        if "µg" in unit:
+            return float(value) / 1000
+        elif "ng" in unit:
+            return float(value) / 1000000
+        else:           
+            return float(value)
+
+    observacions['valor'] = observacions.apply(lambda x: f(x['unit'], x['value']), axis=1)
+    
+    return observacions
+
+def observacions_wwtp_from_conca(observacions, wwtp_df, conca):
+
+    wwtp_df = wwtp_df[['codi_eu', 'conca']]
+    merged = pd.merge(observacions, wwtp_df, how='left', left_on='cod_eu', right_on='codi_eu')
+    return merged[merged['conca'] == conca].copy()
 
