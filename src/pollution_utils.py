@@ -9,6 +9,7 @@ def generate_pollution_observations(contaminant):
     engine = create_engine('postgresql://traca_user:EdificiH2O!@217.61.208.188:5432/traca_1')
     #observacions = pd.read_sql(f"SELECT fecha, estacion, cod_estaci, utm_x, utm_y, variable, unidad_med, valor_alfa, valor FROM estacions_full where variable = '{contaminant}'", engine)
     observacions = pd.read_sql(f"SELECT fecha, estacion, cod_esta_1, utm_x, utm_y, variable, unidad_med, valor_alfa, valor, origen FROM estacions_full_1 where variable = '{contaminant}'", engine)
+
     observacions = observacions.rename(columns={'cod_esta_1':'cod_estaci'})
 
     observacions['fecha'] = pd.to_datetime(observacions['fecha'], format='mixed')
@@ -20,6 +21,8 @@ def generate_pollution_observations(contaminant):
             return float(value) / 1000000
         else:           
             return float(value)
+        
+    
 
     observacions['valor'] = observacions.apply(lambda x: f(x['unidad_med'], x['valor']), axis=1)
     observacions = observacions.drop_duplicates(subset=['fecha', 'cod_estaci', 'variable', 'valor'], keep='first')
@@ -81,7 +84,7 @@ def generate_wwtp_observations(contaminant):
             return float(value) / 1000000
         else:           
             return float(value)
-
+        
     observacions['valor'] = observacions.apply(lambda x: f(x['unit'], x['value']), axis=1)
     
     return observacions

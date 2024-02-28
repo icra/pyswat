@@ -24,7 +24,7 @@ def minimize_pymoo(
     Perform optimization using the pymoo library.
 
     Parameters:
-    - problem (pymoo Problem): The optimization problem defined using the pymoo Problem class.
+    - problem (pyswatplus SWATProblem): The optimization problem defined using the SWATProblem class.
     - algorithm (pymoo Algorithm): The optimization algorithm defined using the pymoo Algorithm class.
     - termination (pymoo Termination): The termination criteria for the optimization defined using the pymoo Termination class.
     - seed (Optional[int], optional): The random seed for reproducibility (default is None).
@@ -32,7 +32,7 @@ def minimize_pymoo(
     - callback (Optional[Callable], optional): A callback function that is called after each generation (default is None).
 
     Returns:
-    - Tuple[Optional[np.ndarray], Optional[str], Optional[float]]: The best solution found during the optimization process, in the form of a tuple containing the decision variables, the path to the output files, and the error.
+    - Tuple[np.ndarray, Dict[str, str], float]: The best solution found during the optimization process, in the form of a tuple containing the decision variables, the path to the output files with the identifier, and the error.
     """
 
     minimize(problem,
@@ -49,15 +49,17 @@ def minimize_pymoo(
 class SWATProblem(Problem):
 
     def __init__(self, 
-                 params: Dict[str, Tuple[str, List[Tuple[str, str, int, int]]]],
+                 params: Dict[str, Tuple[str, List[Tuple[str, str, float, float]]]],
                  function_to_evaluate: Callable,
                  param_arg_name: str,
                  n_workers: int = 1,
+
                  ub_prior: Optional[List[int]] = None,
                  lb_prior: Optional[List[int]] = None,
                  function_to_evaluate_prior: Optional[Callable] = None, #Must get X (np.ndarray) as mandatory argument
                  args_function_to_evaluate_prior: Optional[Dict[str, Any]] = None,  #X does not have to be in here, it's added in the function
                  param_arg_name_to_modificate_by_prior_function: Optional[str] = None,  #param that is modified in kwargs by the return of the prior function
+
                  **kwargs: Dict[str, Any]
                  ) -> None:
         
@@ -68,10 +70,19 @@ class SWATProblem(Problem):
         - params (Dict[str, Tuple[str, List[Tuple[str, str, int, int]]]]): A dictionary containing parameter files.
           Format: {filename: (id_col, [(id, col, min_value, max_value)])}.
         - function_to_evaluate (Callable): The objective function to be minimized.
-          Format: function_to_evaluate(Dict[Any, Any]) -> Tuple[int, Dict[str, str]] where the first element is the error and the second element is a dictionary where the key is the name of the output file and the value is the path to the output file.
+          Format: function_to_evaluate(Dict[str, Any]) -> Tuple[np.ndarray, Dict[str, str], float] 
+          
+          
+          
+          where the first element is the error and the second element is a dictionary where the key is any identifier you want and the value is the path to the output file.
+        
+        
+        
         - param_arg_name (str): The name of the argument in the objective function representing the parameters.
         - n_workers (int, optional): The number of parallel workers to use (default is 1).
         - **kwargs: Additional keyword arguments, that will be passed to the objective function.
+
+        
 
         Returns:
         None

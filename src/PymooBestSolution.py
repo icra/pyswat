@@ -66,7 +66,7 @@ def get_solution() -> Tuple[np.ndarray, Dict[str, str], float]:
     Retrieve the best solution.
 
     Returns:
-    Tuple[Optional[Any], Optional[str], Optional[float]]: The best solution, path, and error.
+    Tuple[np.ndarray, Dict[str, str], float]: The best solution, path, and error.
     """
     
     with this.lock:

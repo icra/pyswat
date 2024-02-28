@@ -130,6 +130,7 @@ class SWATPollution:
 
         #merge observacions with model results
         merged_df = observacions_conca.merge(df, left_on=['variable', 'gis_id', 'year', 'month', 'day'], right_on=['pollutant', 'gis_id', 'yr', 'mon', 'day'])
+
         
         self.a = merged_df
 
@@ -145,6 +146,7 @@ class SWATPollution:
         aux_df = aux_df.dropna()
         observations = aux_df['valor'].values
         predictions = aux_df['mg_l'].values
+
 
         #filter channels by conca and reporject to EPSG:4326
         gdf = gdf[gdf['layer'] == conca]
@@ -189,6 +191,7 @@ class SWATPollution:
         try:
             #self.error = mean_squared_error(df_error['obs'].values, df_error['pred'].values, squared=False)
             self.error = -1 * r2_score(df_error['obs'].values, df_error['pred'].values)
+
             self.rmse = mean_squared_error(df_error['obs'].values, df_error['pred'].values, squared=False)
 
 
@@ -282,7 +285,8 @@ class SWATPollution:
 
         fig = go.Figure()
         
-        fig = px.scatter(df, x="observacio (mg/l)", y="prediccio (mg/l)", hover_data=["gis_id"], color='origen')
+        #fig = px.scatter(df, x="observacio (mg/l)", y="prediccio (mg/l)", hover_data=["gis_id"], color='origen')
+        fig = px.scatter(df, x="observacio (mg/l)", y="prediccio (mg/l)", hover_data=["gis_id"])
 
         #add trace x=y in gray and dashed
         fig.add_trace(
@@ -327,9 +331,85 @@ class SWATPollution:
         )
         
         return fig
+    
+    def r2_mass(self):
+
+        df = self.gdf_observacions.copy()
+        df['mg'] = df['mg_l'] * df['flo_out'] * 1000
+        df['valor'] = df['valor'] * df['flo_out'] * 1000
+
+
+        return (-1 * r2_score(df['valor'].values, df['mg'].values))
+
+
+    
+    def scatter_plot_mass(self):
+        
+        
+        df = self.gdf_observacions.copy()
+        
+        #df = df.replace([np.inf, -np.inf], np.nan).dropna()
+        df = df.rename(columns = {'mg_l':'prediccio (mg/l)', 'valor':'observacio (mg/l)'})
+
+        df['prediccio (mg)'] = df['prediccio (mg/l)'] * df['flo_out'] * 1000
+        df['observacio (mg)'] = df['observacio (mg/l)'] * df['flo_out'] * 1000
+
+        
+        if self.lod is not None:
+            df = df[df['observacio (mg)'] > self.lod]
+
+        df = df[df['prediccio (mg)'] > 0]
+
+        fig = go.Figure()
+        
+        #fig = px.scatter(df, x="observacio (mg)", y="prediccio (mg)", hover_data=["gis_id"], color='origen')
+        fig = px.scatter(df, x="observacio (mg)", y="prediccio (mg)", hover_data=["gis_id"])
+
+
+        #add trace x=y in gray and dashed
+        fig.add_trace(
+            go.Scatter(x=df['observacio (mg)'], y=df['observacio (mg)'],  line=dict(width=1, dash='dot', color='black'), marker=dict(opacity=0))
+            )
+        
+
+        fig.update_traces(marker=dict(size=9,
+                                      #color = 'orange',
+                                      line=dict(width=1)),
+                            selector=dict(mode='markers'))
+
+
+        fig.update_layout(
+            showlegend=False,
+            plot_bgcolor="white",
+            margin=dict(t=10,l=10,b=10,r=10)
+        )
+        
+        fig.update_layout(
+            plot_bgcolor='white'
+        )
+        fig.update_xaxes(
+            mirror=True,
+            ticks='outside',
+            showline=True,
+            linecolor='black',
+            gridcolor='lightgrey'
+        )
+        fig.update_yaxes(
+            mirror=True,
+            ticks='outside',
+            showline=True,
+            linecolor='black',
+            gridcolor='lightgrey'
+        )
+
+        return fig
+        
+        
+        
 
     def get_error(self):
         return self.error
+        #return self.r2_mass()
         
     def visualise_map(self, attribute, name, units, day, month, year):
 
