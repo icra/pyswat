@@ -272,25 +272,35 @@ class SWATPollution:
         
         return (tiles * river_map * observations_map * edars_map).opts(width=800, height=500)
           
-    def scatter_plot(self):
+    def scatter_plot(self, title = None, path = None):
         df = self.gdf_observacions.copy()
 
         #df = df.replace([np.inf, -np.inf], np.nan).dropna()
-        df = df.rename(columns = {'mg_l':'prediccio (mg/l)', 'valor':'observacio (mg/l)'})
+
+        df['ng_l'] = df['mg_l']*1e6
+        df['valor_ng_l'] = df['valor']*1e6
+
+        df = df.rename(columns = {'ng_l':'prediccio (ng/l)', 'valor_ng_l':'observacio (ng/l)'})
+
+        df['color'] = df['origen'].apply(lambda x: '#0d920d' if x == 'aca' else '#fe7c09')
+        
+        df['origen'] = df['origen'].apply(lambda x: 'Observations by ACA' if x == 'aca' else 'Observations by ICRA')
+        
+
 
         if self.lod is not None:
-            df = df[df['observacio (mg/l)'] > self.lod]
+            df = df[df['observacio (ng/l)'] > self.lod]
 
-        df = df[df['prediccio (mg/l)'] > 0]
+        df = df[df['prediccio (ng/l)'] > 0]
 
         fig = go.Figure()
         
-        #fig = px.scatter(df, x="observacio (mg/l)", y="prediccio (mg/l)", hover_data=["gis_id"], color='origen')
-        fig = px.scatter(df, x="observacio (mg/l)", y="prediccio (mg/l)", hover_data=["gis_id"])
+        fig = px.scatter(df, x="observacio (ng/l)", y="prediccio (ng/l)", hover_data=["gis_id"], color='origen', color_discrete_sequence='color', color_discrete_map=dict(zip(df['origen'], df['color'])))
+        #fig = px.scatter(df, x="observacio (ng/l)", y="prediccio (ng/l)", hover_data=["gis_id"])
 
         #add trace x=y in gray and dashed
         fig.add_trace(
-            go.Scatter(x=df['observacio (mg/l)'], y=df['observacio (mg/l)'],  line=dict(width=1, dash='dot', color='black'), marker=dict(opacity=0))
+            go.Scatter(x=df['observacio (ng/l)'], y=df['observacio (ng/l)'],  line=dict(width=1, dash='dot', color='black'), marker=dict(opacity=0), showlegend=False)
             )
         
         
@@ -301,34 +311,46 @@ class SWATPollution:
         """
 
         fig.update_traces(marker=dict(size=9,
-                                      #color = 'orange',
                                       line=dict(width=1)),
                             selector=dict(mode='markers'))
 
 
         fig.update_layout(
-            showlegend=False,
+            showlegend=True,
             plot_bgcolor="white",
-            margin=dict(t=10,l=10,b=10,r=10)
+            legend_title_text='',
+            title = title,
+            legend=dict(
+                orientation='h',  # horizontal legend
+                yanchor='bottom',  # anchor the legend to the bottom
+                y=1.15,  # position the legend just above the bottom
+                xanchor='right',  # anchor the legend to the right
+                x=1  # position the legend at the far right
+            )
+
         )
         
-        fig.update_layout(
-            plot_bgcolor='white'
-        )
         fig.update_xaxes(
             mirror=True,
             ticks='outside',
             showline=True,
             linecolor='black',
-            gridcolor='lightgrey'
+            gridcolor='lightgrey',
+            title="Observation (ng/l)"
         )
+
         fig.update_yaxes(
             mirror=True,
             ticks='outside',
             showline=True,
             linecolor='black',
-            gridcolor='lightgrey'
+            gridcolor='lightgrey',
+            title="Prediction (ng/l)"
+
         )
+
+        if path is not None:
+            fig.write_image(path, width=800, height=500)
         
         return fig
     
@@ -403,9 +425,6 @@ class SWATPollution:
         )
 
         return fig
-        
-        
-        
 
     def get_error(self):
         return self.error
@@ -456,75 +475,153 @@ class SWATPollution:
     def get_a(self):
         return self.a
     
-    def plot_channel(self, gis_id):
+    def plot_channel(self, gis_id, title = None, path = None):
 
-        predictions = self.get_df()  
+        predictions = self.get_df().copy()
         observations = self.gdf_observacions.copy()
 
-        predictions_channel = predictions[predictions['gis_id'] == gis_id][['mg_l', 'Date']]
-        observations_channel = observations[observations['gis_id'] == gis_id]
+        predictions['ng_l'] = predictions['mg_l']*1e6
+        observations['valor_ng_l'] = observations['valor']*1e6
 
-        fig = px.line(predictions_channel, x='Date', y="mg_l", )
+        predictions_channel = predictions[predictions['gis_id'] == gis_id][['ng_l', 'Date', 'flo_out']]
+        observations_channel = observations[observations['gis_id'] == gis_id].copy()
 
-        fig.add_trace(
-            px.scatter(observations_channel, x='fecha', y="valor").update_traces(marker=dict(color='orange'), mode='markers').data[0]
+        print(observations_channel.estacion.unique())
+
+        observations_channel['color'] = observations_channel['origen'].apply(lambda x: '#0d920d' if x == 'aca' else '#fe7c09')
+        observations_channel['origen'] = observations_channel['origen'].apply(lambda x: 'Observations by ACA' if x == 'aca' else 'Observations by ICRA')
+        observations_channel = observations_channel.rename(columns = {'valor_ng_l':'observacio (ng/l)'})
+        #observations_channel = observations_channel.rename(columns = {'ng_l':'prediccio (ng/l)', 'valor_ng_l':'observacio (ng/l)'})
+
+
+        
+        fig1 = go.Figure()
+
+        #hover_data=["gis_id"], 
+        """
+        fig1 = px.scatter(
+            observations_channel, 
+            x="fecha", 
+            y="observacio (ng/l)", 
+            color='origen', 
+            color_discrete_sequence='color', 
+            color_discrete_map=dict(zip(observations_channel['origen'], 
+                                        observations_channel['color'])))
+        """
+
+        
+        fig1.add_trace(
+            go.Scatter(x=predictions_channel['Date'], 
+                    y=predictions_channel['ng_l'],
+                    mode='lines', 
+                    line=dict(color='#1f77b4'),
+                    name='Predicted Concentration')
         )
 
-        fig.update_traces(line=dict(color='black'))
+        fig1.add_trace(
+            go.Scatter(x=predictions_channel['Date'], 
+                    y=predictions_channel['flo_out'],
+                    mode='lines', 
+                    line=dict(color='#80b1d3'),
+                    name='Predicted Discharge',
+                    yaxis='y2')
+        )
 
-        rmse = self.rmse
-
-        upper_bound = predictions_channel['mg_l'] + 2*rmse
-        lower_bound = predictions_channel['mg_l'] - 2*rmse
-        lower_bound = lower_bound.apply(lambda x: max(0, x))
-
-        fig.add_traces([go.Scatter(x = predictions_channel.Date, y = upper_bound,
-                                mode = 'lines', line_color = 'rgba(0,0,0,0)',
-                                showlegend = False),
-                        go.Scatter(x = predictions_channel.Date, y = lower_bound,
-                                mode = 'lines', line_color = 'rgba(0,0,0,0)',
-                                name = '95% confidence interval',
-                                fill='tonexty', fillcolor = 'rgba(128, 128, 128, 0.2)')])
-
-
-        fig.update_traces(marker=dict(size=9,
-                                            color = 'orange',
-                                            line=dict(width=1)),
-                                    selector=dict(mode='markers'))
-
-
-        fig.update_layout(
-                    showlegend=False,
-                    plot_bgcolor="white",
-                    margin=dict(t=10,l=10,b=10,r=10)
-                )
-                
-        fig.update_layout(
-                    plot_bgcolor='white'
-                )
-        fig.update_xaxes(
-                    mirror=True,
-                    ticks='outside',
-                    showline=True,
-                    linecolor='black',
-                    gridcolor='lightgrey'
-                )
-        fig.update_yaxes(
-                    mirror=True,
-                    ticks='outside',
-                    showline=True,
-                    linecolor='black',
-                    gridcolor='lightgrey'
-                )
-
-
-
-        return fig
-
+        for origen, color in zip(observations_channel['origen'].unique(), observations_channel['color'].unique()):
+            df = observations_channel[observations_channel['origen'] == origen]
+            fig1.add_trace(go.Scatter(
+                x=df['fecha'],
+                y=df['observacio (ng/l)'],
+                mode='markers',
+                marker=dict(color=color),
+                name=origen
+    ))
 
         
 
 
+        fig1.update_layout(
+            showlegend=True,
+            plot_bgcolor='white',
+            legend=dict(
+                orientation='h',  # horizontal legend
+                yanchor='bottom',  # anchor the legend to the bottom
+                y=1.15,  # position the legend just above the bottom
+                xanchor='right',  # anchor the legend to the right
+                x=1  # position the legend at the far right
+            )
+            ),
+        
+
+
+        
+        fig1.update_traces(marker=dict(size=9,
+                line=dict(width=1)),
+                selector=dict(mode='markers'))
+
+
+        fig1.update_xaxes(
+            mirror=True,
+            ticks='outside',
+            showline=True,
+            linecolor='black',
+            gridcolor='lightgrey'
+        )
+        
+        fig1.update_yaxes(
+            mirror=True,
+            ticks='outside',
+            showline=True,
+            linecolor='black',
+            gridcolor='lightgrey'
+        )
+
+
+        fig2 = go.Figure()
+
+        rmse = self.rmse
+        upper_bound = predictions_channel['ng_l'] + 2*rmse*1e6
+        lower_bound = predictions_channel['ng_l'] - 2*rmse*1e6
+        lower_bound = lower_bound.apply(lambda x: max(0, x))
+
+        fig2.add_trace(
+            go.Scatter(x=predictions_channel['Date'], 
+                    y=upper_bound,
+                    mode='lines', 
+                    line=dict(color='rgba(0,0,0,0)'),
+                    showlegend=False,
+                    name='95% Confidence Interval')
+        )
+
+        fig2.add_trace(
+            go.Scatter(x=predictions_channel['Date'], 
+                    y=lower_bound,
+                    mode='lines', 
+                    line=dict(color='rgba(0,0,0,0)'),
+                    fill='tonexty', 
+                    fillcolor='rgba(128, 128, 128, 0.2)',
+                    name='95% Confidence Interval')
+        )
+        
+
+        fig1.update_layout(
+            title= title,
+            xaxis=dict(title="Date"),
+            yaxis=dict(title="Concentration (ng/l)"),
+            yaxis2=dict(title="Discharge (m3/s)", overlaying="y", side="right")
+        )
+
+        fig1.update_layout(yaxis2=dict(range=[1000, 0], side='right'))
+        
+
+        fig1.add_traces(fig2.data)
+        
+
+        if path is not None:
+            fig1.write_image(path, width=800, height=500)
+
+        return fig1
+        
     
 
 
