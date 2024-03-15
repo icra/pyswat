@@ -5,7 +5,7 @@ import numpy as np
 from sqlalchemy import create_engine
 import geopandas as gpd
 from shapely.geometry import Point
-from sklearn.metrics import mean_squared_error, r2_score
+from sklearn.metrics import mean_squared_error, r2_score, mean_absolute_percentage_error
 import plotly.express as px
 from bokeh.models import HoverTool
 import geoviews as gv
@@ -193,6 +193,7 @@ class SWATPollution:
             self.error = -1 * r2_score(df_error['obs'].values, df_error['pred'].values)
 
             self.rmse = mean_squared_error(df_error['obs'].values, df_error['pred'].values, squared=False)
+            self.mape = mean_absolute_percentage_error(df_error['obs'].values, df_error['pred'].values)
 
 
         except:
@@ -348,6 +349,38 @@ class SWATPollution:
             title="Prediction (ng/l)"
 
         )
+
+
+        # Add text annotation for R-squared value
+        fig.add_annotation(
+            text=f'R-squared: {-1*self.error:.2f}',              
+            xref='paper',  # Use paper coordinates for x position (0 to 1)
+            yref='paper',  # Use paper coordinates for y position (0 to 1)
+            x=0.02,  # Place the text at the top right (adjust as needed)
+            y=1.2,  # Place the text at the top right (adjust as needed)
+            showarrow=False,  # Do not show an arrow
+            font=dict(
+                size=12,  # Adjust font size as needed
+                color="black"  # Adjust font color as needed
+            ),
+            xanchor='left'  # Align text to the left within the annotation box
+        )
+
+        # Add text annotation for R-squared value
+        fig.add_annotation(
+            text=f'MAPE: {100*self.mape:.2f}%',              
+            xref='paper',  # Use paper coordinates for x position (0 to 1)
+            yref='paper',  # Use paper coordinates for y position (0 to 1)
+            x=0.02,  # Place the text at the top right (adjust as needed)
+            y=1.15,  # Place the text at the top right (adjust as needed)
+            showarrow=False,  # Do not show an arrow
+            font=dict(
+                size=12,  # Adjust font size as needed
+                color="black"  # Adjust font color as needed
+            ),
+            xanchor='left'  # Align text to the left within the annotation box
+        )
+
 
         if path is not None:
             fig.write_image(path, width=800, height=500)
