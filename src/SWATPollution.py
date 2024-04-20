@@ -5,7 +5,7 @@ import numpy as np
 from sqlalchemy import create_engine
 import geopandas as gpd
 from shapely.geometry import Point
-from sklearn.metrics import mean_squared_error, r2_score, mean_absolute_percentage_error
+from sklearn.metrics import mean_squared_error, r2_score, mean_absolute_percentage_error, root_mean_squared_error
 import plotly.express as px
 from bokeh.models import HoverTool
 import geoviews as gv
@@ -16,7 +16,27 @@ from pySWATPlus.TxtinoutReader import TxtinoutReader
 #from src.TxtinoutReader import TxtinoutReader
 
 
-  
+
+def nse(observations, predictions):
+    return 1 - (sum((observations - predictions)**2) / sum((observations - observations.mean())**2))
+
+def pbias(observations, predictions):
+    return 100 * sum(observations - predictions) / sum(observations)
+
+
+# Root Mean Standard Deviation Ratio (RSR)
+def rsr(observations, predictions):
+    return sum((predictions - observations)**2) / (sum((observations - observations.mean())**2))**0.5
+
+def rsr_2(observations, predictions):
+    #return root_mean_squared_error(observations, predictions) / (sum((observations - predictions.mean())**2))**0.5
+    return root_mean_squared_error(observations, predictions) / np.std(observations)
+
+    
+
+    #return {'rmse_a': root_mean_squared_error(observations, predictions), 'rmse': mean_squared_error(observations, predictions, squared=False), 'rmse_2': ((sum((predictions - observations)**2)) / len(predictions))**0.5 }
+
+    
 
 class SWATPollution:
 
@@ -192,8 +212,12 @@ class SWATPollution:
             #self.error = mean_squared_error(df_error['obs'].values, df_error['pred'].values, squared=False)
             self.error = -1 * r2_score(df_error['obs'].values, df_error['pred'].values)
 
-            self.rmse = mean_squared_error(df_error['obs'].values, df_error['pred'].values, squared=False)
+            self.rmse = mean_squared_error(df_error['obs'].values, df_error['pred'].values, squared=False) * 1e6
             self.mape = mean_absolute_percentage_error(df_error['obs'].values, df_error['pred'].values)
+            self.nse = nse(df_error['obs'].values, df_error['pred'].values)
+            self.pbias = pbias(df_error['obs'].values, df_error['pred'].values)
+            self.rsr = rsr(df_error['obs'].values, df_error['pred'].values)
+            self.rsr_2 = rsr_2(df_error['obs'].values, df_error['pred'].values)
 
 
         except:
@@ -205,6 +229,7 @@ class SWATPollution:
         self.gdf_observacions = gdf_observacions
         self.contaminant = contaminant
         self.conca = conca
+        self.df_error = df_error
 
     
     def get_df(self):
@@ -301,7 +326,7 @@ class SWATPollution:
 
         #add trace x=y in gray and dashed
         fig.add_trace(
-            go.Scatter(x=df['observacio (ng/l)'], y=df['observacio (ng/l)'],  line=dict(width=1, dash='dot', color='black'), marker=dict(opacity=0), showlegend=False)
+            go.Scatter(x=df['observacio (ng/l)'], y=df['observacio (ng/l)'],  line=dict(width=1, dash='dot', color='black'), marker=dict(opacity=0), name='x=y')
             )
         
         
@@ -352,6 +377,7 @@ class SWATPollution:
 
 
         # Add text annotation for R-squared value
+        """
         fig.add_annotation(
             text=f'R-squared: {-1*self.error:.2f}',              
             xref='paper',  # Use paper coordinates for x position (0 to 1)
@@ -380,6 +406,7 @@ class SWATPollution:
             ),
             xanchor='left'  # Align text to the left within the annotation box
         )
+        """
 
 
         if path is not None:
